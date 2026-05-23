@@ -190,6 +190,6 @@ The core JIT translation algorithms (AetherBridge internals, VRC, ChronoTag) are
 
 ## Contact
 
-Built by [Pulkit Srivastava](mailto:pulkitsrivastavae@gmail.com) — Durgapur, West Bengal, India.
+Built by [Pulkit Srivastava](mailto:pulkitsrivastavae@gmail.com) — India.
 
 *Feedback, collaboration, and pilot deployments welcome.*
