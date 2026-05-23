@@ -2,10 +2,10 @@
 
 > A security-first operating system kernel where security enforcement is proven at translation time, not checked at runtime.
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/yourusername/aetheros)
-[![Tests](https://img.shields.io/badge/tests-518%2F518-brightgreen)](https://github.com/yourusername/aetheros)
-[![Phase](https://img.shields.io/badge/phase-75%2F75-blue)](https://github.com/yourusername/aetheros)
-[![Platform](https://img.shields.io/badge/platform-x86--64%20%7C%20AArch64-lightgrey)](https://github.com/yourusername/aetheros)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/pulkit6732/aetheros)
+[![Tests](https://img.shields.io/badge/tests-518%2F518-brightgreen)](https://github.com/pulkit6732/aetheros)
+[![Phase](https://img.shields.io/badge/phase-75%2F75-blue)](https://github.com/pulkit6732/aetheros)
+[![Platform](https://img.shields.io/badge/platform-x86--64%20%7C%20AArch64-lightgrey)](https://github.com/pulkit6732/aetheros)
 
 ---
 
