@@ -1,0 +1,8 @@
+target/
+*.o
+*.d
+disk.img
+*.zip
+node_modules/
+serial-*.txt
+build/
