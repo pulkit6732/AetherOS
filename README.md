@@ -1,195 +1,123 @@
 # AetherOS
 
-> A security-first operating system kernel where security enforcement is proven at translation time, not checked at runtime.
+AetherOS is an operating system written from scratch for verifiable execution. Only
+signed programs run, every program runs through a checked translator inside a sandbox,
+and every finished run produces a signed, hash-chained receipt that anyone can verify
+on another computer.
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/pulkit6732/aetheros)
-[![Tests](https://img.shields.io/badge/tests-518%2F518-brightgreen)](https://github.com/pulkit6732/aetheros)
-[![Phase](https://img.shields.io/badge/phase-75%2F75-blue)](https://github.com/pulkit6732/aetheros)
-[![Platform](https://img.shields.io/badge/platform-x86--64%20%7C%20AArch64-lightgrey)](https://github.com/pulkit6732/aetheros)
+Created by Pulkit Srivastava.
 
----
+**Status:** research preview, version 0.92.0. The first public test release, for
+VirtualBox, is scheduled for 22 November 2026.
 
-## What is AetherOS?
+## Why AetherOS
 
-AetherOS is a from-scratch OS kernel written in Rust targeting x86-64 (and partially AArch64/RPi4). Every user program executes through **AetherBridge** — a mandatory JIT translation gate. Security guards are emitted into the output binary at translation time. The kernel mathematically proves, using interval analysis on register value ranges, which guards are redundant and elides them.
+On conventional systems the record of what a computer did is kept by the same machine,
+and the same administrators, that could change it. AetherOS makes the record
+independently checkable: a receipt names the exact program, the exact machine code it
+was translated into, and the exact kernel build that ran it, and the receipts form a
+chain in which a removed, reordered or altered entry is detected.
 
-The result: security that cannot be bypassed at runtime because it was proven correct before the code ever ran.
+AetherOS is designed as a small trusted component that runs next to a conventional
+system, for work whose record must hold up when it is disputed: automated and AI-driven
+decisions, approval and payment steps, and audit trails.
 
-**Not a simulation. Boots on real x86-64 BIOS hardware from a USB stick.**
+## How a program runs
 
----
-
-## Core Architecture
-
-```
-User Program (VELA ISA bytecode)
-         │
-         ▼
-  ┌─────────────────┐
-  │  AetherBridge   │  ◄── JIT translation gate (mandatory)
-  │  (JIT Compiler) │       emits x86-64 with security guards
-  └────────┬────────┘
-           │ Value-Range analysis (elides provably-safe checks)
-           ▼
-  ┌─────────────────┐
-  │  x86-64 native  │  ◄── security is a translation property,
-  │  machine code   │       NOT a runtime check
-  └─────────────────┘
+```mermaid
+flowchart LR
+    A[Signed program<br/>AELF image] --> B{Admission gate}
+    B -->|signature, structure,<br/>instruction scan| C[AetherBridge<br/>VELA to x86-64]
+    B -->|any check fails| X[Refused]
+    C -->|sandbox, runtime checks,<br/>fuel gates| D[Contained execution]
+    D -->|result, fault or<br/>fuel stop| E[Receipt issued]
+    E --> F[(Receipt chain)]
+    F -->|receipts export| G[Independent verifier]
 ```
 
-### Key Properties
+## System architecture
 
-| Property | Description |
+```mermaid
+flowchart TB
+    subgraph Programs
+        P[Signed VELA apps]
+    end
+    subgraph Kernel
+        SH[Shell and commands]
+        EX[Admission gate<br/>exec_aelf]
+        BR[AetherBridge translator]
+        RC[aetherproof-core<br/>receipts and chain]
+        FS[IronVFS file system]
+        DR[Drivers<br/>PS/2, PCI, e1000, virtio]
+        MM[Memory<br/>W^X, KPTI, sandbox arena]
+    end
+    subgraph Platform
+        HW[QEMU or VirtualBox<br/>x86-64, BIOS]
+    end
+    P --> EX --> BR --> MM
+    SH --> EX
+    SH --> FS
+    EX --> RC
+    DR --> HW
+    MM --> HW
+```
+
+## Receipts
+
+```mermaid
+flowchart LR
+    R0["Receipt 0<br/>prev = 0"] --> R1["Receipt 1<br/>prev = SHA-256(R0)"] --> R2["Receipt 2<br/>prev = SHA-256(R1)"] --> RN["..."]
+```
+
+Each receipt (280 bytes) records the program's SHA-256, the SHA-256 of the machine code
+AetherBridge produced, the kernel build id, a control-flow hash, process facts, the hash
+of the previous receipt, and an Ed25519 signature. The verifier checks every signature,
+the sequence and the links.
+
+## Getting started
+
+Download the release, verify it, and boot it in VirtualBox with BIOS firmware. Full
+steps: [Documentation/MANUAL.md](Documentation/MANUAL.md#3-installing-and-starting).
+
+```sh
+openssl pkeyutl -verify -pubin -inkey release.pub.pem -rawin -in SHA256SUMS -sigfile SHA256SUMS.sig
+sha256sum -c SHA256SUMS
+```
+
+At the `aether>` prompt:
+
+```
+help              list commands
+apps              list the signed programs in this build
+run primes        verify, translate, run and receipt a program
+receipts          show whether the receipt chain is intact
+about trust       show the keys this system trusts
+```
+
+## Source code
+
+This repository holds the public documentation. The source code and the signed VirtualBox
+test image are published with the test release on 22 November 2026.
+
+## Documentation
+
+| Document | Contents |
 |---|---|
-| **Mandatory translation** | No direct native execution — all code passes through AetherBridge |
-| **VELA ISA** | Custom 32-bit RISC instruction set (VELA-1 scalar + VELA-2 SSE2 vectors) |
-| **Capability system** | Process capabilities gate filesystem access, network, crypto opcodes |
-| **IronVFS** | Cryptographic RAM filesystem — Ed25519 per-file signatures, per-block FNV hash |
-| **ChronoTag** | Physical memory write-count tracking; detects data exfiltration at kernel level |
-| **ISA-ASLR** | Per-process randomised register→x86 mapping; defeats ROP chain reuse |
-| **SMP** | 4-core LAPIC bringup, IPI shootdown, PCID-based TLB flush |
+| [Documentation/MANUAL.md](Documentation/MANUAL.md) | User and developer manual |
+| [Documentation/man/](Documentation/man/README.md) | Manual page for every shell command |
+| [Documentation/ARCHITECTURE.md](Documentation/ARCHITECTURE.md) | Architecture, trust model and data flow |
+| [RELEASE_NOTES.md](RELEASE_NOTES.md) | Release notes |
+| [SECURITY.md](SECURITY.md) | Reporting security issues |
 
----
+## Project status
 
-## Status: Phase 75 Complete
+AetherOS runs in QEMU and VirtualBox with BIOS firmware. Files are held in memory, the
+receipt key is generated at each start-up, and there is no graphical interface yet. The
+full list of limits is in the manual, chapter 14, and open findings are tracked in
+the source tree (`tests/findings/FINDINGS.md`).
 
-| Component | Status |
-|---|---|
-| x86-64 boot (multiboot2) | ✅ Boots on real hardware |
-| 64-bit paging (4-level) | ✅ |
-| Heap allocator | ✅ |
-| VELA-1 JIT (scalar ops) | ✅ ~70 opcodes |
-| VELA-2 SSE2 vectors | ✅ 11 opcodes (V.ZERO–V.GET.W) |
-| VELA-3 security opcodes | ✅ CHAOS polymorphism, TIME.BIND, PROOF.PATH |
-| 25 POSIX-compatible syscalls | ✅ |
-| IronVFS + Ed25519 signatures | ✅ |
-| virtio-blk disk persistence | ✅ |
-| Intel e1000 Ethernet | ✅ (polling) |
-| VGA textmode + PS/2 keyboard | ✅ |
-| SMP 4-core LAPIC | ✅ (APs park at idle) |
-| AArch64 / RPi4 partial port | ✅ (boots to shell) |
-| **Total verified assertions** | **518/518** |
+## Licence
 
----
-
-## Building
-
-### Prerequisites
-
-```bash
-# Install Rust nightly with bare-metal target
-rustup install nightly
-rustup target add x86_64-unknown-none
-rustup component add rust-src --toolchain nightly
-
-# QEMU for testing
-# Ubuntu/Debian: sudo apt install qemu-system-x86
-# macOS: brew install qemu
-```
-
-### Build & Run
-
-```bash
-git clone https://github.com/yourusername/aetheros
-cd aetheros/kernel
-
-# Build (dev — includes sig_bypass for testing)
-cargo build
-
-# Build hardened (production — no bypasses)
-cargo build --release --no-default-features
-
-# Run in QEMU (requires aetheros-kernel ELF + disk image)
-qemu-system-x86_64 \
-  -kernel target/x86_64-unknown-none/debug/aetheros-kernel \
-  -drive file=disk.img,format=raw,if=virtio \
-  -serial stdio -display none -m 128M
-```
-
-### Run Tests
-
-All 518 assertions run at boot. Check serial output for `[OK]` / `[FAIL]`:
-
-```
-cargo build && qemu-system-x86_64 -kernel ... -serial file:serial-out.txt -display none
-grep -c '\[OK\]' serial-out.txt   # should print 518
-grep '\[FAIL\]' serial-out.txt    # should be empty
-```
-
----
-
-## VELA ISA Quick Reference
-
-VELA is a 32-bit fixed-width RISC ISA. Instruction format:
-
-```
- 31      24 23    18 17    12 11     6 5      0
- ┌─────────┬────────┬────────┬────────┬───────┐
- │ opcode  │   Rd   │  Rs1   │  Rs2   │  imm6 │
- └─────────┴────────┴────────┴────────┴───────┘
-```
-
-**Scalar (VELA-1):** R0–R15 → x86-64 GPRs. R0 = zero register. Arithmetic, memory, branch, syscall.  
-**Vector (VELA-2):** VR0–VR7 → XMM0–XMM7 (SSE2). V.ADD.D/Q, V.AND/OR/XOR, V.LOAD/STORE, V.SCALAR.W, V.GET.W.
-
----
-
-## Security Model (Summary)
-
-1. **Code cannot execute without translation** — AetherBridge is enforced at the syscall boundary.
-2. **CFI (Control Flow Integrity)** — indirect calls are checked against a valid target bitmap.
-3. **SHADOW.CHK** — stack frame integrity guard emitted into every function prologue.
-4. **Capability-gated opcodes** — filesystem, network, and crypto opcodes require explicit capability tokens.
-5. **Ed25519 binaries** — executables are signed; kernel verifies before loading.
-6. **ChronoTag** — kernel-level write-count monitor for physical pages (AI weight protection).
-
-> **Note on gaps:** TCP is a stub. Filesystem data is signed but not encrypted at rest. FIPS 140-3 validation is not done. These are planned for the next phase.
-
----
-
-## Directory Structure
-
-```
-kernel/
-├── src/
-│   ├── arch/vela1/     # x86-64 boot, GDT, IDT, TSS, LAPIC, syscalls
-│   ├── drivers/        # uart, vga, ps2, pci, e1000, virtio-blk/net
-│   ├── mem/            # frame allocator, paging, heap, slab, ChronoTag
-│   ├── proc/           # scheduler, process table, context switch
-│   ├── fs/             # IronVFS cryptographic filesystem
-│   ├── translate.rs    # AetherBridge JIT compiler (VELA→x86-64)
-│   ├── bridge.rs       # Translation entry point
-│   ├── exec.rs         # AELF binary loader + Ed25519 verify
-│   ├── net/            # ephemeral network stack (stub TCP)
-│   ├── crypto/         # ChaCha20, Ed25519 wrappers
-│   ├── disk/           # DarkDisk encrypted block layer
-│   └── main.rs         # Kernel entry + 518 test assertions
-├── Cargo.toml
-└── x86_64-unknown-none.json  # bare-metal target spec
-```
-
----
-
-## Research Background
-
-AetherOS explores one core question:
-
-> *Can security checks be moved from runtime enforcement to translation-time proof, eliminating the class of attacks that bypass runtime checks?*
-
-The answer: partially yes. The Value-Range Coloring (VRC) algorithm proves at translation time that specific memory accesses are safe, and elides the CFI guard for those accesses. This is verified in the test suite. The gap is that VRC currently only handles simple interval cases — a complete solution requires a full abstract interpreter.
-
----
-
-## License
-
-The public interface, documentation, and test harness in this repository are released under **MIT License**.
-
-The core JIT translation algorithms (AetherBridge internals, VRC, ChronoTag) are **Patent Pending**. Contact for licensing.
-
----
-
-## Contact
-
-Built by [Pulkit Srivastava](mailto:pulkitsrivastavae@gmail.com) — India.
-
-*Feedback, collaboration, and pilot deployments welcome.*
+Documentation in this repository: MIT (see [LICENSE](LICENSE)). Source code, when published:
+kernel under the Mozilla Public License 2.0; instruction set, tools and tests under the Apache
+License 2.0.
