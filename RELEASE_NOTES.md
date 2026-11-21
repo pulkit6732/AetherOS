@@ -15,7 +15,8 @@ check offline. This is a preview for developers and researchers, not a daily-use
   confined to a 4 MiB sandbox arena), contained execution, fuel limit, v2 receipt.
 - **Receipts (AetherProof v2, 280 bytes)** bind the program's SHA-256, the SHA-256 of the
   x86-64 code AetherBridge produced, the kernel build id, the control-flow hash and the
-  previous receipt. `receipts` shows a private summary; `receipts export` prints them.
+  previous receipt. `receipts` shows a private summary; `receipts export` prints them; `receipts save` writes them
+  to `/home/receipts.txt`.
 - **Shell**: `help`, `man <command>`, `about arch|security|trust|limits`, `license`,
   files under `/home` (`ls cd pwd mkdir touch cat echo > rm cp mv`), `history` with
   Up/Down, `uptime`, `uname -a`, `reboot`, `shutdown`, `lang en|hinglish|genz`.
@@ -31,6 +32,10 @@ Both must succeed. `release.pub.pem` is the key the kernel trusts (`about trust`
 its first bytes).
 
 ## Run it in VirtualBox
+
+Quickest: `./vbox-vm.sh aetheros-0.92.0.iso` creates and starts a correctly configured VM.
+By hand:
+
 
 1. New VM: type **Other/Unknown (64-bit)**, 512 MB RAM, **EFI off** (BIOS).
 2. Network: NAT, adapter type **Intel PRO/1000 MT Desktop (82540EM)**.

@@ -1,54 +1,31 @@
-# Security Policy
+# Security policy
 
-## Project status
-
-AetherOS is experimental software distributed as a public research preview. It has not undergone a complete independent security audit and must not be used to protect sensitive data, production workloads, or critical systems.
-
-## Supported version
-
-| Version | Status |
-|---|---|
-| 0.92.0 | Research Preview |
+AetherOS is a research preview. Do not use it to protect real data yet.
 
 ## Reporting a vulnerability
 
-Please report suspected security vulnerabilities privately. Do not publish details of an unpatched vulnerability in a public issue.
+Report privately; do not open a public issue for an unfixed vulnerability.
+Include the version (`ver` in the shell), the build id (`about trust`), steps to
+reproduce and the impact you expect. A contact address will be published with
+the first public release.
 
-**Private reporting channel:** [https://www.linkedin.com/in/pulkit-srivastava-2033942a6/) OR ENABLE GITHUB PRIVATE VULNERABILITY REPORTING]
+## What is in scope
 
-Include:
-- Affected AetherOS version.
-- Build ID (`about trust`).
-- Environment and virtualisation platform.
-- Steps to reproduce.
-- Expected and observed behaviour.
-- Potential security impact.
-- Proof-of-concept material, where safe to provide.
+- program admission (signature check, preflight, AetherBridge translation)
+- isolation (W^X, KPTI, capability checks)
+- AetherProof receipts (forgery, chain breaks, key handling)
+- the release build and signing process
 
-## Scope
+## Known, tracked weaknesses
 
-Security reports are welcome for:
-- Program admission and signature verification.
-- AELF parsing and instruction validation.
-- AetherBridge translation and execution.
-- Sandbox boundaries and memory protections.
-- Fuel limits and runtime checks.
-- AetherProof receipt generation, signatures, and chain verification.
-- Release builds and signing procedures.
+Open findings are listed in `tests/findings/FINDINGS.md` and in
+`ARCHITECTURE.html` section 41. Reports that duplicate them are still welcome
+when they add a working exploit or a better fix.
 
-## Known limitations
+## Keys
 
-AetherOS has documented open findings and incomplete security properties. Consult `RELEASE_NOTES.md` and the architecture documentation before testing.
-
-Reports that overlap with known findings are still welcome when they provide a reproducible exploit, additional impact, or a better remediation.
-
-## Cryptographic keys
-
-- The release admission public key is used by release builds.
-- The release private key must never be committed to the repository or included in the ISO.
-- Development signing keys are test keys and must not be treated as production trust anchors.
-- Receipt signing keys are generated at startup; they are not TPM-sealed hardware identities.
-
-## Responsible disclosure
-
-Please allow the maintainer reasonable time to investigate and address a report before publicly disclosing an unfixed vulnerability.
+- Release kernels trust only the release public key; its private key never
+  enters the repository or the image.
+- The DEV key in the source tree is a published **test** key. Dev builds trust
+  it; release builds refuse to be built with it.
+- Receipt signing keys are generated per boot and are never displayed.
